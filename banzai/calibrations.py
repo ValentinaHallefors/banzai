@@ -99,7 +99,7 @@ class CalibrationStacker(CalibrationMaker):
 
         # Save the master dark image with all of the combined images in the header
         master_header = fits_utils.create_master_calibration_header(images)
-        master_image = Image(self.pipeline_context, data=stacked_data, header=master_header)
+        master_image = self.pipeline_context.FRAME_CLASS(self.pipeline_context, data=stacked_data, header=master_header)
         master_image.filename = master_calibration_filename
         master_image.bpm = master_bpm
 

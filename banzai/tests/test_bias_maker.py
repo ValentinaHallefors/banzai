@@ -32,10 +32,10 @@ def test_header_cal_type_bias(mock_image):
 
     maker = BiasMaker(FakeContext())
 
-    maker.do_stage([FakeBiasImage() for x in range(6)])
+    images = maker.do_stage([FakeBiasImage() for x in range(6)])
 
-    args, kwargs = mock_image.call_args
-    header = kwargs['header']
+    header = images[0].header
+
     assert header['OBSTYPE'].upper() == 'BIAS'
 
 
@@ -89,10 +89,9 @@ def test_makes_a_sensible_master_bias(mock_images):
                                       size=(image.ny, image.nx))
 
     maker = BiasMaker(FakeContext())
-    maker.do_stage(images)
+    images = maker.do_stage(images)
 
-    args, kwargs = mock_images.call_args
-    master_bias = kwargs['data']
+    master_bias = images[0].data
 
     assert np.abs(np.mean(master_bias)) < 0.1
     actual_readnoise = np.std(master_bias)

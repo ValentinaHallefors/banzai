@@ -12,8 +12,8 @@ import banzai.settings
 
 
 class FakeImage(Image):
-    def __init__(self, nx=101, ny=103, image_multiplier=1.0,
-                 ccdsum='2 2', epoch='20160101', n_amps=1, filter='U'):
+    def __init__(self, pipeline_context=None, nx=101, ny=103, image_multiplier=1.0,
+                 ccdsum='2 2', epoch='20160101', n_amps=1, filter='U', data=None, header=None):
         self.nx = nx
         self.ny = ny
         self.instrument_id = -1
@@ -21,13 +21,17 @@ class FakeImage(Image):
         self.camera = 'kb76'
         self.ccdsum = ccdsum
         self.epoch = epoch
-        self.data = image_multiplier * np.ones((ny, nx), dtype=np.float32)
+        if data is None:
+            data = image_multiplier * np.ones((ny, nx), dtype=np.float32)
+        self.data = data
         if n_amps > 1:
             self.data = np.stack(n_amps*[self.data])
         self.filename = 'test.fits'
         self.filter = filter
         self.dateobs = datetime(2016, 1, 1)
-        self.header = Header()
+        if header is None:
+            header = Header()
+        self.header = header
         self.caltype = ''
         self.bpm = np.zeros((ny, nx), dtype=np.uint8)
         self.request_number = '0000331403'
@@ -36,6 +40,7 @@ class FakeImage(Image):
         self.molecule_id = '544562351'
         self.exptime = 30.0
         self.obstype = 'TEST'
+
 
     def get_calibration_filename(self):
         return '/tmp/{0}_{1}_{2}_bin{3}.fits'.format(self.caltype, self.instrument,
@@ -56,6 +61,7 @@ class FakeContext(object):
         for key, value in dict(inspect.getmembers(settings)).items():
             if not key.startswith('_'):
                 setattr(self, key, value)
+        self.FRAME_CLASS = FakeImage
 
 
 class FakeStage(Stage):

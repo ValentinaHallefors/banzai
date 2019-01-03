@@ -32,10 +32,9 @@ def test_header_cal_type_dark(mock_image):
 
     maker = DarkMaker(FakeContext())
 
-    maker.do_stage([FakeDarkImage() for x in range(6)])
+    images = maker.do_stage([FakeDarkImage() for x in range(6)])
 
-    args, kwargs = mock_image.call_args
-    header = kwargs['header']
+    header = images[0].header
     assert header['OBSTYPE'].upper() == 'DARK'
 
 
@@ -69,9 +68,8 @@ def test_makes_a_sensible_master_dark(mock_images):
     expected_master_dark = stats.sigma_clipped_mean(np.arange(nimages), 3.0)
 
     maker = DarkMaker(FakeContext())
-    maker.do_stage(images)
+    images = maker.do_stage(images)
 
-    args, kwargs = mock_images.call_args
-    master_dark = kwargs['data']
+    master_dark = images[0].data
 
     assert (master_dark == expected_master_dark).all()
