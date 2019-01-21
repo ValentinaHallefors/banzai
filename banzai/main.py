@@ -44,6 +44,13 @@ RAW_PATH_CONSOLE_ARGUMENT = {'args': ["--raw-path"],
                                         'help': 'Top level directory where the raw data is stored'}}
 
 
+from celery import Celery
+from banzai import celeryconfig
+
+app = Celery()
+app.config_from_object(celeryconfig)
+
+
 def get_stages_todo(ordered_stages, last_stage=None, extra_stages=None):
     """
 
@@ -124,6 +131,7 @@ def parse_args(settings, extra_console_arguments=None,
     return pipeline_context
 
 
+@app.task()
 def run(stages_to_do, image_paths, pipeline_context, calibration_maker=False):
     """
     Main driver script for banzai.
@@ -165,7 +173,8 @@ def process_single_frame(pipeline_context, raw_path, filename, last_stage=None, 
         logger.info(log_message, extra_tags={'raw_path': raw_path, 'filename': filename})
     stages_to_do = get_stages_todo(pipeline_context.ORDERED_STAGES, last_stage=last_stage, extra_stages=extra_stages)
     try:
-        run(stages_to_do, [os.path.join(raw_path, filename)], pipeline_context, calibration_maker=False)
+        run.apply_async([stages_to_do, [os.path.join(raw_path, filename)], pipeline_context, False],
+                        task_id=filename)
     except Exception:
         logger.error(logs.format_exception(), extra_tags={'filename': filename})
 

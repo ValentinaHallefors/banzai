@@ -1,5 +1,5 @@
 ARG MINICONDA_VERSION
-FROM docker.lco.global/docker-miniconda3:${MINICONDA_VERSION}
+FROM docker.lco.global/docker-miniconda3:4.5.11
 MAINTAINER Las Cumbres Observatory <webmaster@lco.global>
 
 RUN yum -y install epel-release gcc mariadb-devel \
@@ -11,7 +11,7 @@ ENV PATH /opt/astrometry.net/bin:$PATH
 
 RUN conda install -y pip numpy cython scipy astropy sqlalchemy pytest==3.5 mock requests ipython coverage\
         && conda install -c openastronomy sep \
-        && conda install -c conda-forge kombu elasticsearch pytest-astropy mysql-connector-python\
+        && conda install -c conda-forge kombu elasticsearch pytest-astropy mysql-connector-python celery\
         && conda clean -y --all
 
 RUN pip install logutils lcogt_logging \
