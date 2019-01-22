@@ -15,20 +15,11 @@ logger = logging.getLogger(__name__)
 
 def image_passes_criteria(filename, criteria, db_address=dbs._DEFAULT_DB):
     instrument = dbs.get_instrument_for_file(filename, db_address=db_address)
-    return dbs.instrument_passes_criteria(instrument, criteria)
-
-
-def get_obstype(filename):
-    obstype = None
-    hdu_list = fits.open(filename)
-    for hdu in hdu_list:
-        if 'OBSTYPE' in hdu.header.keys():
-            obstype = hdu.header['OBSTYPE']
-
-    if obstype is None:
-        logger.error('Unable to get OBSTYPE', extra_tags={'filename': filename})
-
-    return obstype
+    passes = True
+    for criterion in criteria:
+        if not criterion.instrument_passes(instrument):
+            passes = False
+    return passes
 
 
 def select_images(image_list, image_types, instrument_criteria, db_address=dbs._DEFAULT_DB):
@@ -37,7 +28,14 @@ def select_images(image_list, image_types, instrument_criteria, db_address=dbs._
         try:
             if not image_passes_criteria(filename, instrument_criteria, db_address=db_address):
                 continue
-            obstype = get_obstype(filename)
+            obstype = None
+            hdu_list = fits.open(filename)
+            for hdu in hdu_list:
+                if 'OBSTYPE' in hdu.header.keys():
+                    obstype = hdu.header['OBSTYPE']
+
+            if obstype is None:
+                logger.error('Unable to get OBSTYPE', extra_tags={'filename': filename})
 
             if obstype in image_types:
                 images.append(filename)
@@ -100,7 +98,7 @@ def save_images(pipeline_context, images, master_calibration=False, image_is_bad
             image_filename += '.fz'
             filepath += '.fz'
         if image.obstype in pipeline_context.CALIBRATION_IMAGE_TYPES:
-            image_attributes = pipeline_context.CALIBRATION_SET_CRITERIA.get(image.obstype, [])
+            image_attributes = pipeline_context.CALIBRATION_SET_CRITERIA.get(image.obstype, None)
             dbs.save_calibration_info(image.obstype, filepath, image, image_attributes=image_attributes,
                                       is_master=master_calibration, image_is_bad=image_is_bad,
                                       db_address=pipeline_context.db_address)

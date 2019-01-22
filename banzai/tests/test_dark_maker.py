@@ -1,9 +1,19 @@
+import mock
 import numpy as np
+from astropy.io import fits
 
 from banzai.utils import stats
 from banzai.dark import DarkMaker
-from banzai.tests.utils import FakeContext, throws_inhomogeneous_set_exception
-from banzai.tests.dark_utils import FakeDarkImage
+from banzai.tests.utils import FakeImage, FakeContext, throws_inhomogeneous_set_exception
+
+
+class FakeDarkImage(FakeImage):
+    def __init__(self, *args, **kwargs):
+        super(FakeDarkImage, self).__init__(*args, **kwargs)
+        self.caltype = 'dark'
+        self.header = fits.Header()
+        self.header['OBSTYPE'] = 'DARK'
+        self.header['TELESCOP'] = '1m0-01'
 
 
 def test_min_images():
@@ -17,33 +27,40 @@ def test_group_by_attributes():
     assert maker.group_by_attributes == ['ccdsum']
 
 
-def test_header_cal_type_dark():
-    context = FakeContext()
-    context.FRAME_CLASS = FakeDarkImage
+@mock.patch('banzai.calibrations.Image')
+def test_header_cal_type_dark(mock_image):
 
-    maker = DarkMaker(context)
+    maker = DarkMaker(FakeContext())
 
-    images = maker.do_stage([FakeDarkImage() for x in range(6)])
-    assert images[0].header['OBSTYPE'].upper() == 'DARK'
+    maker.do_stage([FakeDarkImage() for x in range(6)])
+
+    args, kwargs = mock_image.call_args
+    header = kwargs['header']
+    assert header['OBSTYPE'].upper() == 'DARK'
 
 
-def test_raises_an_exception_if_ccdsums_are_different():
+@mock.patch('banzai.calibrations.Image')
+def test_raises_an_exception_if_ccdsums_are_different(mock_images):
     throws_inhomogeneous_set_exception(DarkMaker, FakeContext(), 'ccdsum', '1 1')
 
 
-def test_raises_an_exception_if_epochs_are_different():
+@mock.patch('banzai.calibrations.Image')
+def test_raises_an_exception_if_epochs_are_different(mock_images):
     throws_inhomogeneous_set_exception(DarkMaker, FakeContext(), 'epoch', '20160102')
 
 
-def test_raises_an_exception_if_nx_are_different():
+@mock.patch('banzai.calibrations.Image')
+def test_raises_an_exception_if_nx_are_different(mock_images):
     throws_inhomogeneous_set_exception(DarkMaker, FakeContext(), 'nx', 105)
 
 
-def test_raises_an_exception_if_ny_are_different():
+@mock.patch('banzai.calibrations.Image')
+def test_raises_an_exception_if_ny_are_different(mock_images):
     throws_inhomogeneous_set_exception(DarkMaker, FakeContext(), 'ny', 107)
 
 
-def test_makes_a_sensible_master_dark():
+@mock.patch('banzai.calibrations.Image')
+def test_makes_a_sensible_master_dark(mock_images):
     nimages = 20
     images = [FakeDarkImage() for x in range(nimages)]
     for i, image in enumerate(images):
@@ -51,6 +68,10 @@ def test_makes_a_sensible_master_dark():
 
     expected_master_dark = stats.sigma_clipped_mean(np.arange(nimages), 3.0)
 
-    maker = DarkMaker(FakeContext(frame_class=FakeDarkImage))
-    stacked_images = maker.do_stage(images)
-    assert (stacked_images[0].data == expected_master_dark).all()
+    maker = DarkMaker(FakeContext())
+    maker.do_stage(images)
+
+    args, kwargs = mock_images.call_args
+    master_dark = kwargs['data']
+
+    assert (master_dark == expected_master_dark).all()
