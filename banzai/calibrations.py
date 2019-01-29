@@ -1,7 +1,7 @@
 import logging
-import abc
 import itertools
 import os
+import abc
 
 import numpy as np
 

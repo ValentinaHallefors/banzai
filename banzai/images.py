@@ -13,6 +13,7 @@ from banzai import dbs
 from banzai.utils import date_utils, file_utils, fits_utils, image_utils
 from banzai.munge import munge
 from banzai import logs
+from banzai.calibration_products import ImageCalibrationProduct
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ class Image(object):
         filepath = self._get_filepath(pipeline_context)
         self._writeto(filepath, fpack=pipeline_context.fpack)
         if self.obstype in pipeline_context.CALIBRATION_IMAGE_TYPES:
-            dbs.save_calibration_info(filepath, self, db_address=pipeline_context.db_address)
+            dbs.save_calibration_info(filepath, ImageCalibrationProduct(self), db_address=pipeline_context.db_address)
         if pipeline_context.post_to_archive:
             self._post_to_archive(filepath)
 
