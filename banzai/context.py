@@ -1,15 +1,15 @@
 import inspect
 
 
-class TelescopeCriterion:
+class InstrumentCriterion:
     def __init__(self, attribute, comparison_operator, comparison_value, exclude=False):
         self.attribute = attribute
         self.comparison_operator = comparison_operator
         self.comparison_value = comparison_value
         self.exclude = exclude
 
-    def telescope_passes(self, telescope):
-        test = self.comparison_operator(getattr(telescope, self.attribute), self.comparison_value)
+    def instrument_passes(self, instrument):
+        test = self.comparison_operator(getattr(instrument, self.attribute), self.comparison_value)
         if self.exclude:
             test = not test
         return test
@@ -35,12 +35,12 @@ class PipelineContext(object):
             elif variable != 'command_line_args':
                 super(PipelineContext, self).__setattr__(variable, local_variables[variable])
 
-        for keyword in vars(command_line_args):
-            super(PipelineContext, self).__setattr__(keyword, getattr(command_line_args, keyword))
-
         for key, value in dict(inspect.getmembers(settings)).items():
             if not key.startswith('_'):
                 super(PipelineContext, self).__setattr__(key, value)
+
+        for keyword in vars(command_line_args):
+            super(PipelineContext, self).__setattr__(keyword, getattr(command_line_args, keyword))
 
     def __delattr__(self, item):
         raise TypeError('Deleting attribute is not allowed. PipelineContext is immutable')

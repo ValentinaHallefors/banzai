@@ -1,9 +1,11 @@
+import json
 from datetime import datetime
 import inspect
 
 import pytest
 import numpy as np
 from astropy.io.fits import Header
+from astropy.utils.data import get_pkg_data_filename
 
 from banzai.utils import image_utils
 from banzai.stages import Stage
@@ -12,22 +14,26 @@ import banzai.settings
 
 
 class FakeImage(Image):
-    def __init__(self, nx=101, ny=103, image_multiplier=1.0,
-                 ccdsum='2 2', epoch='20160101', n_amps=1, filter='U'):
+    def __init__(self, pipeline_context=None, nx=101, ny=103, image_multiplier=1.0,
+                 ccdsum='2 2', epoch='20160101', n_amps=1, filter='U', data=None, header=None, **kwargs):
         self.nx = nx
         self.ny = ny
-        self.telescope_id = -1
+        self.instrument_id = -1
         self.site = 'elp'
-        self.instrument = 'kb76'
+        self.camera = 'kb76'
         self.ccdsum = ccdsum
         self.epoch = epoch
-        self.data = image_multiplier * np.ones((ny, nx), dtype=np.float32)
+        if data is None:
+            data = image_multiplier * np.ones((ny, nx), dtype=np.float32)
+        self.data = data
         if n_amps > 1:
             self.data = np.stack(n_amps*[self.data])
         self.filename = 'test.fits'
         self.filter = filter
         self.dateobs = datetime(2016, 1, 1)
-        self.header = Header()
+        if header is None:
+            header = Header({'TELESCOP': '1m0-10'})
+        self.header = header
         self.caltype = ''
         self.bpm = np.zeros((ny, nx), dtype=np.uint8)
         self.request_number = '0000331403'
@@ -36,6 +42,7 @@ class FakeImage(Image):
         self.molecule_id = '544562351'
         self.exptime = 30.0
         self.obstype = 'TEST'
+        self.is_bad = False
 
     def get_calibration_filename(self):
         return '/tmp/{0}_{1}_{2}_bin{3}.fits'.format(self.caltype, self.instrument,
@@ -50,29 +57,32 @@ class FakeImage(Image):
 
 
 class FakeContext(object):
-    def __init__(self, preview_mode=False, settings=banzai.settings.ImagingSettings()):
-        self.processed_path = '/tmp'
-        self.preview_mode = preview_mode
+    def __init__(self, preview_mode=False, settings=banzai.settings.ImagingSettings(), frame_class=FakeImage):
         for key, value in dict(inspect.getmembers(settings)).items():
             if not key.startswith('_'):
                 setattr(self, key, value)
+        self.FRAME_CLASS = frame_class
+        self.preview_mode = preview_mode
+        self.processed_path = '/tmp'
 
 
 class FakeStage(Stage):
     def do_stage(self, images):
         return images
-    def group_by_attributes(self):
-        return None
 
 
-def throws_inhomogeneous_set_exception(stagetype, context, keyword, value):
+def throws_inhomogeneous_set_exception(stagetype, context, keyword, value, calibration_maker=False):
     stage = stagetype(context)
 
     with pytest.raises(image_utils.InhomogeneousSetException) as exception_info:
         kwargs = {keyword: value}
-        images = [FakeImage(**kwargs)]
-        images += [FakeImage() for x in range(6)]
-        stage.do_stage(images)
+        if calibration_maker:
+            images = [FakeImage(**kwargs)]
+            images += [FakeImage() for x in range(6)]
+            stage.do_stage(images)
+        else:
+            image = FakeImage(**kwargs)
+            stage.do_stage(image)
     assert 'Images have different {0}s'.format(keyword) == str(exception_info.value)
 
 
@@ -81,10 +91,19 @@ def gaussian2d(image_shape, x0, y0, brightness, fwhm):
     y = np.arange(image_shape[0])
     x2d, y2d = np.meshgrid(x, y)
 
-    sig = fwhm  / 2.35482
+    sig = fwhm / 2.35482
 
     normfactor = brightness / 2.0 / np.pi * sig ** -2.0
     exponent = -0.5 * sig ** -2.0
     exponent *= (x2d - x0) ** 2.0 + (y2d - y0) ** 2.0
 
     return normfactor * np.exp(exponent)
+
+
+class FakeResponse(object):
+    def __init__(self):
+        with open(get_pkg_data_filename('data/configdb_example.json')) as f:
+            self.data = json.load(f)
+
+    def json(self):
+        return self.data

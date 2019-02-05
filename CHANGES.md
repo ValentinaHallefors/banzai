@@ -1,3 +1,60 @@
+0.18.1 (2019-01-31)
+-------------------
+- Breaking typo in Preview Pipeline removed 
+
+0.18.0 (2019-01-29)
+-------------------
+- Calibration stacking is now separate from data reduction. Individual
+  calibration frames are reduced and added to the database. The stacking 
+  method then queries the database using a range of dates to determine
+  which frames should be stacked. 
+- It is now possible to mark frames as good or bad in the database
+- Individual calibration frames for which a previous good master to 
+  perform a comparison against does not exist are marked as bad
+  
+0.17.2 (2019-01-24)
+-------------------
+- Increased the character limit of string columns in the database
+
+0.17.1 (2019-01-23)
+-------------------
+- Added a creation date column to the `CalibrationImage` table
+
+0.17.0 (2019-01-21)
+-------------------
+- Refactored settings.py to make it possible to override for BANZAI-NRES
+- Various refactors and generalizations, like FRAME_CLASS that can be overridden by BANZAI-NRES
+
+0.16.0 (2018-12-11)
+-------------------
+- Significant changes made to the database structure:
+  - The `PreviewImage` table has been renamed to `ProcessedImage`
+  - The `Telescope` table has been renamed to `Instrument`; the `instrument` 
+    column is now `camera`; and the `camera_type` column is now `type`
+  - `enclosure` and `telescope` columns have been added to the `Instrument` table
+  - The `BadPixelMask` table has been removed, and BPMs are now located in the 
+    `CalibrationImage` table as type `BPM`
+  - In the `CalibrationImage` table, `dayobs` has been changed to `dateobs` and
+    provides the date and time the observation took place; `telescope_id` has 
+    been renamed to `instrument_id`; an `is_master` column has been added; 
+    a JSON formatted `attributes` column is now used to store parameters such 
+    as `ccdsum` and `filter` which no longer have their own dedicated columns;
+    and an `is_bad` column has been added to mark bad calibration frames
+- To reflect the name change of the `Telescope` table to `Instrument`, all
+  `telescope` instances are now named `intrument`
+- All calibration frames (individual and master) are saved to the 
+  `CalibrationImage` table
+- The naming scheme for master calibration files has been changed from:
+  ```
+  {cal_type}_{instrument}_{epoch}_bin{bin}_{filter}.fits
+  ```
+  to:
+  ```
+  {site}{telescope}-{camera}-{epoch}-{cal_type}-bin{bin}-{filter}.fits
+  ```
+- Functionality for migrating from an old format to a new format database has
+  been added to `/banzai/utils/db_migration.py`
+
 0.15.1 (2018-12-05)
 -------------------
 - Fixed AppplyCalibration class to still use group_by (broken since 0.14.1)

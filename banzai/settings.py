@@ -1,12 +1,21 @@
+"""
+settings.py: Settings script for banzai.
+
+    Important note: due to the way that the parameters are read in,
+    variables that begin with an underscore will not be added to the
+    pipeline context.
+
+"""
 import operator
 import abc
 
-from banzai.context import TelescopeCriterion
+from banzai.context import InstrumentCriterion
 from banzai import qc, bias, crosstalk, gain, mosaic, bpm, trim, dark, flats, photometry, astrometry, images
+from banzai.utils.file_utils import ccdsum_to_filename, filter_to_filename
+from banzai.calibrations import make_calibration_filename_function
 
 
 class Settings(abc.ABC):
-
     @property
     @abc.abstractmethod
     def FRAME_SELECTION_CRITERIA(self):
@@ -24,7 +33,7 @@ class Settings(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def CALIBRATION_MIN_IMAGES(self):
+    def CALIBRATION_MIN_FRAMES(self):
         pass
 
     @property
@@ -32,34 +41,42 @@ class Settings(abc.ABC):
     def CALIBRATION_SET_CRITERIA(self):
         pass
 
-    SCHEDULABLE_CRITERIA = [TelescopeCriterion('schedulable', operator.eq, True)]
+    @property
+    @abc.abstractmethod
+    def CALIBRATION_FILENAME_FUNCTIONS(self):
+        pass
 
-    BIAS_IMAGE_TYPES = ['BIAS']
-    BIAS_SUFFIXES = ['b00.fits']
+    @property
+    @abc.abstractmethod
+    def CALIBRATION_IMAGE_TYPES(self):
+        pass
 
-    DARK_IMAGE_TYPES = ['DARK']
-    DARK_SUFFIXES = ['d00.fits']
+    @property
+    @abc.abstractmethod
+    def LAST_STAGE(self):
+        pass
 
-    FLAT_IMAGE_TYPES = ['SKYFLAT']
-    FLAT_SUFFIXES = ['f00.fits']
+    @property
+    @abc.abstractmethod
+    def EXTRA_STAGES(self):
+        pass
 
-    SCIENCE_IMAGE_TYPES = ['EXPOSE', 'STANDARD']
-    SCIENCE_SUFFIXES = ['e00.fits', 's00.fits']
+    @property
+    @abc.abstractmethod
+    def CALIBRATION_STACKER_STAGE(self):
+        pass
 
-    TRAILED_IMAGE_TYPES = ['TRAILED']
+    SCHEDULABLE_CRITERIA = [InstrumentCriterion('schedulable', operator.eq, True)]
 
-    EXPERIMENTAL_IMAGE_TYPES = ['EXPERIMENTAL']
 
-    SINISTRO_IMAGE_TYPES = SCIENCE_IMAGE_TYPES + BIAS_IMAGE_TYPES + DARK_IMAGE_TYPES + FLAT_IMAGE_TYPES +\
-        TRAILED_IMAGE_TYPES + EXPERIMENTAL_IMAGE_TYPES
-
-    PREVIEW_ELIGIBLE_SUFFIXES = SCIENCE_SUFFIXES + BIAS_SUFFIXES + DARK_SUFFIXES + FLAT_SUFFIXES
+def telescope_to_filename(image):
+    return image.header.get('TELESCOP', '').replace('-', '')
 
 
 class ImagingSettings(Settings):
 
-    FRAME_SELECTION_CRITERIA = [TelescopeCriterion('camera_type', operator.contains, 'FLOYDS', exclude=True),
-                                TelescopeCriterion('camera_type', operator.contains, 'NRES', exclude=True)]
+    FRAME_SELECTION_CRITERIA = [InstrumentCriterion('type', operator.contains, 'FLOYDS', exclude=True),
+                                InstrumentCriterion('type', operator.contains, 'NRES', exclude=True)]
 
     FRAME_CLASS = images.Image
 
@@ -80,28 +97,34 @@ class ImagingSettings(Settings):
                       astrometry.WCSSolver,
                       qc.pointing.PointingTest]
 
-    CALIBRATION_MIN_IMAGES = {
-        'BIAS': 5,
-        'DARK': 5,
-        'SKYFLAT': 5,
-    }
+    CALIBRATION_MIN_FRAMES = {'BIAS': 5,
+                              'DARK': 5,
+                              'SKYFLAT': 5}
 
-    CALIBRATION_SET_CRITERIA = {
-        'BIAS': ['ccdsum'],
-        'DARK': ['ccdsum'],
-        'SKYFLAT': ['ccdsum', 'filter']
-    }
+    CALIBRATION_SET_CRITERIA = {'BIAS': ['ccdsum'],
+                                'DARK': ['ccdsum'],
+                                'SKYFLAT': ['ccdsum', 'filter']}
 
-    BIAS_LAST_STAGE = trim.Trimmer
-    BIAS_EXTRA_STAGES = [bias.BiasMasterLevelSubtractor, bias.BiasComparer, bias.BiasMaker]
-    BIAS_EXTRA_STAGES_PREVIEW = [bias.BiasMasterLevelSubtractor, bias.BiasComparer]
+    LAST_STAGE = {'BIAS': trim.Trimmer, 'DARK': bias.BiasSubtractor, 'SKYFLAT': dark.DarkSubtractor,
+                  'SINISTRO': mosaic.MosaicCreator, 'STANDARD': None, 'EXPOSE': None}
 
-    DARK_LAST_STAGE = bias.BiasSubtractor
-    DARK_EXTRA_STAGES = [dark.DarkNormalizer, dark.DarkComparer, dark.DarkMaker]
-    DARK_EXTRA_STAGES_PREVIEW = [dark.DarkNormalizer, dark.DarkComparer]
+    EXTRA_STAGES = {'BIAS': [bias.BiasMasterLevelSubtractor, bias.BiasComparer],
+                    'DARK': [dark.DarkNormalizer, dark.DarkComparer],
+                    'SKYFLAT': [flats.FlatNormalizer, qc.PatternNoiseDetector, flats.FlatComparer],
+                    'STANDARD': None,
+                    'EXPOSE': None}
 
-    FLAT_LAST_STAGE = dark.DarkSubtractor
-    FLAT_EXTRA_STAGES = [flats.FlatNormalizer, qc.PatternNoiseDetector, flats.FlatComparer, flats.FlatMaker]
-    FLAT_EXTRA_STAGES_PREVIEW = [flats.FlatNormalizer, qc.PatternNoiseDetector, flats.FlatComparer]
+    CALIBRATION_STACKER_STAGE = {'BIAS': bias.BiasMaker,
+                                 'DARK': dark.DarkMaker,
+                                 'SKYFLAT': flats.FlatMaker}
 
-    SINISTRO_LAST_STAGE = mosaic.MosaicCreator
+    CALIBRATION_IMAGE_TYPES = ['BIAS', 'DARK', 'SKYFLAT']
+
+    SINISTRO_IMAGE_TYPES = ['BIAS', 'DARK', 'SKYFLAT', 'EXPOSE', 'STANDARD', 'TRAILED', 'EXPERIMENTAL']
+
+    PREVIEW_ELIGIBLE_SUFFIXES = ['e00.fits', 's00.fits', 'b00.fits', 'd00.fits', 'f00.fits']
+
+    CALIBRATION_FILENAME_FUNCTIONS = {'BIAS': make_calibration_filename_function('BIAS', [ccdsum_to_filename], telescope_to_filename),
+                                      'DARK': make_calibration_filename_function('DARK', [ccdsum_to_filename], telescope_to_filename),
+                                      'SKYFLAT': make_calibration_filename_function('SKYFLAT', [ccdsum_to_filename, filter_to_filename],
+                                                                                    telescope_to_filename)}
