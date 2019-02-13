@@ -184,14 +184,11 @@ def process_single_frame(pipeline_context, raw_path, filename, log_message=''):
         logger.error(logs.format_exception(), extra_tags={'filename': filename})
 
 
-def process_master_maker(pipeline_context, instrument, frame_type, min_date, max_date, use_masters=False):
+def process_master_maker(pipeline_context, instrument, frame_type, min_date, max_date, image_path_list):
     extra_tags = {'instrument': instrument.camera, 'obstype': frame_type,
                   'min_date': min_date.strftime(date_utils.TIMESTAMP_FORMAT),
                   'max_date': max_date.strftime(date_utils.TIMESTAMP_FORMAT)}
     logger.info("Making master frames", extra_tags=extra_tags)
-    image_path_list = dbs.get_individual_calibration_images(instrument, frame_type, min_date, max_date,
-                                                            use_masters=use_masters,
-                                                            db_address=pipeline_context.db_address)
     if len(image_path_list) == 0:
         logger.info("No calibration frames found to stack", extra_tags=extra_tags)
 
@@ -255,8 +252,12 @@ def stack_calibrations(pipeline_context=None, raw_path=None):
     pipeline_context, raw_path = parse_directory_args(pipeline_context, raw_path, banzai.settings.ImagingSettings(),
                                                       extra_console_arguments=extra_console_arguments)
     instrument = dbs.query_for_instrument(pipeline_context.db_address, pipeline_context.site, pipeline_context.camera)
+    image_path_list = dbs.get_individual_calibration_images(instrument, pipeline_context.frame_type.upper(),
+                                                            pipeline_context.min_date, pipeline_context.max_date,
+                                                            use_masters=False,
+                                                            db_address=pipeline_context.db_address)
     process_master_maker(pipeline_context, instrument,  pipeline_context.frame_type.upper(),
-                         pipeline_context.min_date, pipeline_context.max_date)
+                         pipeline_context.min_date, pipeline_context.max_date, image_path_list)
 
 
 def run_end_of_night():
