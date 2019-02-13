@@ -63,7 +63,7 @@ class Settings(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def CALIBRATION_STACKER_STAGE(self):
+    def CALIBRATION_MASTER_STAGE(self):
         pass
 
     SCHEDULABLE_CRITERIA = [InstrumentCriterion('schedulable', operator.eq, True)]
@@ -114,9 +114,9 @@ class ImagingSettings(Settings):
                     'STANDARD': None,
                     'EXPOSE': None}
 
-    CALIBRATION_STACKER_STAGE = {'BIAS': bias.BiasMaker,
-                                 'DARK': dark.DarkMaker,
-                                 'SKYFLAT': flats.FlatMaker}
+    CALIBRATION_MASTER_STAGE = {'BIAS': bias.BiasMaker,
+                                'DARK': dark.DarkMaker,
+                                'SKYFLAT': flats.FlatMaker}
 
     CALIBRATION_IMAGE_TYPES = ['BIAS', 'DARK', 'SKYFLAT']
 

@@ -253,16 +253,16 @@ class Image(object):
         return self.data[inner_ny: -inner_ny, inner_nx: -inner_nx]
 
 
-def read_image(filename, pipeline_context):
+def read_data_frame(filename, pipeline_context):
     try:
-        image = pipeline_context.FRAME_CLASS(pipeline_context, filename=filename)
-        if image.instrument is None:
-            logger.error("Image instrument attribute is None, aborting", image=image)
+        data_frame = pipeline_context.FRAME_CLASS(pipeline_context, filename=filename)
+        if data_frame.instrument is None:
+            logger.error("Image instrument attribute is None, aborting", image=data_frame)
             raise IOError
-        munge(image)
-        return image
+        munge(data_frame)
+        return data_frame
     except Exception:
-        logger.error('Error loading image: {error}'.format(error=logs.format_exception()),
+        logger.error('Error loading data_frame: {error}'.format(error=logs.format_exception()),
                      extra_tags={'filename': filename})
 
 

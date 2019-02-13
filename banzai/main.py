@@ -22,7 +22,7 @@ import banzai.context
 from banzai import dbs, realtime, logs
 from banzai.context import PipelineContext
 from banzai.utils import image_utils, date_utils, fits_utils
-from banzai.images import read_image
+from banzai.images import read_data_frame
 import banzai.settings
 
 
@@ -129,7 +129,7 @@ def run(image_path, pipeline_context):
     """
     Main driver script for banzai.
     """
-    image = read_image(image_path, pipeline_context)
+    image = read_data_frame(image_path, pipeline_context)
     stages_to_do = get_stages_todo(pipeline_context.ORDERED_STAGES,
                                    last_stage=pipeline_context.LAST_STAGE[image.obstype],
                                    extra_stages=pipeline_context.EXTRA_STAGES[image.obstype])
@@ -144,9 +144,9 @@ def run(image_path, pipeline_context):
     logger.info("Finished reducing frame", image=image)
 
 
-def run_master_maker(image_path_list, pipeline_context, frame_type):
-    images = [read_image(image_path, pipeline_context) for image_path in image_path_list]
-    stage_to_run = pipeline_context.CALIBRATION_STACKER_STAGE[frame_type](pipeline_context)
+def run_master_maker(image_path_list, pipeline_context, master_frame_type):
+    images = [read_data_frame(image_path, pipeline_context) for image_path in image_path_list]
+    stage_to_run = pipeline_context.CALIBRATION_MASTER_STAGE[master_frame_type](pipeline_context)
     images = stage_to_run.run(images)
     for image in images:
         image.write(pipeline_context)
