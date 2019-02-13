@@ -145,11 +145,11 @@ def run(image_path, pipeline_context):
 
 
 def run_master_maker(image_path_list, pipeline_context, master_frame_type):
-    images = [read_data_frame(image_path, pipeline_context) for image_path in image_path_list]
+    data_frames = [read_data_frame(image_path, pipeline_context) for image_path in image_path_list]
     stage_to_run = pipeline_context.CALIBRATION_MASTER_STAGE[master_frame_type](pipeline_context)
-    images = stage_to_run.run(images)
-    for image in images:
-        image.write(pipeline_context)
+    data_frames = stage_to_run.run(data_frames)
+    for data_frame in data_frames:
+        data_frame.write(pipeline_context)
 
 
 def process_directory(pipeline_context, raw_path, image_types=None, log_message=''):
