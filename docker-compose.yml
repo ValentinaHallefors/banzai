@@ -10,7 +10,7 @@ services:
     build: .
     image: banzai:test
     network_mode: bridge
-    command: ["celery", "worker", "--app=worker.worker.app", "--concurrency=2", "--hostname=worker@%h", "--loglevel=INFO"]
+    command: ["celery", "worker", "--app=banzai.main", "--concurrency=2", "--config=banzai.celeryconfig" ]
     depends_on:
       - broker
   broker:
