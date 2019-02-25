@@ -184,8 +184,8 @@ def process_single_frame(pipeline_context, raw_path, filename, log_message=''):
         logger.error(logs.format_exception(), extra_tags={'filename': filename})
 
 
-def process_master_maker(pipeline_context, instrument, frame_type, min_date, max_date, image_path_list):
-    extra_tags = {'instrument': instrument.camera, 'obstype': frame_type,
+def process_master_maker(pipeline_context, instrument, master_frame_type, min_date, max_date, image_path_list):
+    extra_tags = {'instrument': instrument.camera, 'master_frame_type': master_frame_type,
                   'min_date': min_date.strftime(date_utils.TIMESTAMP_FORMAT),
                   'max_date': max_date.strftime(date_utils.TIMESTAMP_FORMAT)}
     logger.info("Making master frames", extra_tags=extra_tags)
@@ -193,7 +193,7 @@ def process_master_maker(pipeline_context, instrument, frame_type, min_date, max
         logger.info("No calibration frames found to stack", extra_tags=extra_tags)
 
     try:
-        run_master_maker(image_path_list, pipeline_context, frame_type)
+        run_master_maker(image_path_list, pipeline_context, master_frame_type)
     except Exception:
         logger.error(logs.format_exception())
     logger.info("Finished")
@@ -232,14 +232,14 @@ def reduce_single_frame(pipeline_context=None):
     process_single_frame(pipeline_context, raw_path, pipeline_context.filename)
 
 
-def stack_calibrations(pipeline_context=None, raw_path=None):
+def stack_calibrations(pipeline_context=None, raw_path=None, settings=banzai.settings.ImagingSettings):
     extra_console_arguments = [{'args': ['--site'],
                                 'kwargs': {'dest': 'site', 'help': 'Site code (e.g. ogg)', 'required': True}},
                                {'args': ['--camera'],
                                 'kwargs': {'dest': 'camera', 'help': 'Camera (e.g. kb95)', 'required': True}},
                                {'args': ['--frame-type'],
                                 'kwargs': {'dest': 'frame_type', 'help': 'Type of frames to process',
-                                           'choices': ['bias', 'dark', 'skyflat'], 'required': True}},
+                                           'choices': settings.CALIBRATION_MASTER_STAGE.keys(), 'required': True}},
                                {'args': ['--min-date'],
                                 'kwargs': {'dest': 'min_date', 'required': True, 'type': date_utils.valid_date,
                                            'help': 'Earliest observation time of the individual calibration frames. '
