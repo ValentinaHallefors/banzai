@@ -1,5 +1,5 @@
 ARG MINICONDA_VERSION
-FROM docker.lco.global/docker-miniconda3:${MINICONDA_VERSION}
+FROM docker.lco.global/docker-miniconda3:4.5.11
 MAINTAINER Las Cumbres Observatory <webmaster@lco.global>
 
 RUN yum -y install epel-release gcc mariadb-devel \
@@ -10,11 +10,10 @@ RUN yum -y install epel-release gcc mariadb-devel \
 ENV PATH /opt/astrometry.net/bin:$PATH
 
 RUN conda install -y pip numpy\>=1.13 cython scipy astropy pytest\>=3.6,\<4.0 mock requests ipython coverage pyyaml\
-        && conda install -y -c conda-forge kombu elasticsearch\<6.0.0,\>=5.0.0 pytest-astropy mysql-connector-python \
-        sqlalchemy\>=1.3.0b1 psycopg2-binary 'dramatiq[redis, watch]' \
+        && conda install -y -c conda-forge kombu elasticsearch\<6.0.0,\>=5.0.0 pytest-astropy mysql-connector-python psycopg2\
         && conda clean -y --all
 
-RUN pip install --no-cache-dir logutils lcogt_logging git+https://github.com/kbarbary/sep.git@master
+RUN pip install --no-cache-dir logutils lcogt_logging sqlalchemy\>=1.3.0b1 'dramatiq[redis,watch]' git+https://github.com/kbarbary/sep.git@master
 
 RUN mkdir /home/archive && /usr/sbin/groupadd -g 10000 "domainusers" \
         && /usr/sbin/useradd -g 10000 -d /home/archive -M -N -u 10087 archive \
