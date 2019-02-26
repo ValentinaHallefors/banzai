@@ -232,7 +232,10 @@ def reduce_single_frame(pipeline_context=None):
     process_single_frame(pipeline_context, raw_path, pipeline_context.filename)
 
 
-def stack_calibrations(pipeline_context=None, raw_path=None, settings=banzai.settings.ImagingSettings):
+def stack_calibrations(pipeline_context=None, raw_path=None, settings=None):
+    if settings is None:
+        settings = banzai.settings.ImagingSettings()
+    #  TODO need way to pass banzai_nres.settings instead of banzai.settings
     extra_console_arguments = [{'args': ['--site'],
                                 'kwargs': {'dest': 'site', 'help': 'Site code (e.g. ogg)', 'required': True}},
                                {'args': ['--camera'],
@@ -249,9 +252,10 @@ def stack_calibrations(pipeline_context=None, raw_path=None, settings=banzai.set
                                            'help': 'Latest observation time of the individual calibration frames. '
                                                    'Must be in the format "YYYY-MM-DDThh:mm:ss".'}}]
 
-    pipeline_context, raw_path = parse_directory_args(pipeline_context, raw_path, banzai.settings.ImagingSettings(),
+    pipeline_context, raw_path = parse_directory_args(pipeline_context, raw_path, settings,
                                                       extra_console_arguments=extra_console_arguments)
     instrument = dbs.query_for_instrument(pipeline_context.db_address, pipeline_context.site, pipeline_context.camera)
+    #  TODO this will fail since use_masters is always false. For 'TRACE' calib, we need use_masters=True
     image_path_list = dbs.get_individual_calibration_images(instrument, pipeline_context.frame_type.upper(),
                                                             pipeline_context.min_date, pipeline_context.max_date,
                                                             use_masters=False,
