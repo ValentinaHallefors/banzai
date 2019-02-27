@@ -167,7 +167,7 @@ def process_directory(pipeline_context, raw_path, image_types=None, log_message=
         images_to_reduce += image_utils.select_images(image_path_list, pipeline_context, image_type)
     for image_path in images_to_reduce:
         try:
-            run(image_path, pipeline_context)
+            run.send(image_path, pipeline_context)
         except Exception:
             logger.error(logs.format_exception(), extra_tags={'filename': image_path})
 
@@ -183,7 +183,7 @@ def process_single_frame(pipeline_context, raw_path, filename, log_message=''):
                      extra_tags={'raw_path': raw_path, 'filename': filename})
         return
     try:
-        run(full_path, pipeline_context)
+        run.send(full_path, pipeline_context)
     except Exception:
         logger.error(logs.format_exception(), extra_tags={'filename': filename})
 
@@ -393,7 +393,7 @@ class RealtimeModeListener(ConsumerMixin):
                 # Increment the number of tries for this file
                 realtime.increment_try_number(path, db_address=self.pipeline_context.db_address)
 
-                run(path, self.pipeline_context)
+                run.send(path, self.pipeline_context)
                 realtime.set_file_as_processed(path, db_address=self.pipeline_context.db_address)
 
         except Exception:
