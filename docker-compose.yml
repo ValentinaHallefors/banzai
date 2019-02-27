@@ -3,6 +3,8 @@ services:
   redis:
     image: redis:latest 
     network_mode: bridge
+    ports:
+        - "6379:6379"
   worker:
     image: banzai:test
     network_mode: bridge
