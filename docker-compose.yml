@@ -14,4 +14,5 @@ services:
     volumes:
       - /archive:/archive
       - /home/mturner/scratch:/scratch
-
+    environment:
+      - REDIS_HOST=redis
