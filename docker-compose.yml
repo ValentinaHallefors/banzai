@@ -9,7 +9,7 @@ services:
     image: banzai:test
     network_mode: bridge
     entrypoint: ["dramatiq", "banzai.main:redis_broker", "-p", "2", "-v"] 
-    depends_on:
+    links:
       - redis 
     volumes:
       - /archive:/archive
