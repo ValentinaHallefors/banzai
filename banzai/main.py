@@ -41,7 +41,7 @@ root_logger.addHandler(root_handler)
 
 logger = logging.getLogger(__name__)
 
-redis_broker = RedisBroker(host="redis", port=6537)
+redis_broker = RedisBroker(host=os.getenv('REDIS_HOST', '127.0.0.1'))
 dramatiq.set_broker(redis_broker)
 
 RAW_PATH_CONSOLE_ARGUMENT = {'args': ["--raw-path"],
@@ -128,8 +128,7 @@ def parse_args(settings, extra_console_arguments=None,
 
     return pipeline_context
 
-
-@dramatiq.actor(max_retries=3, min_backoff=1000*60*10)
+@dramatiq.actor()
 def run(image_path, pipeline_context):
     """
     Main driver script for banzai.
