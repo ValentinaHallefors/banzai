@@ -61,9 +61,11 @@ def sinistro_mode_is_supported(image):
     # TODO Add support for other binnings
     supported = True
 
-    if image.header['CCDSUM'] not in  '1 1  2 2':
-        supported = False
-        logger.error('Non-supported Sinistro mode', image=image)
+    if image.header['CCDSUM'] not in  '1 1':
+        if 'CONFMODE' not in image.header:
+            supported = False
+            logger.error('Non-supported Sinistro mode', image=image)
+
     if image.camera not in crosstalk_coefficients.keys():
         supported = False
         logger.error('Crosstalk Coefficients missing!', image=image)
