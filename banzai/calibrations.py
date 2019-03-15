@@ -119,7 +119,11 @@ class ApplyCalibration(Stage):
         master_calibration_image = self.pipeline_context.FRAME_CLASS(self.pipeline_context,
                                                                      filename=master_calibration_filename)
         try:
-            image_utils.check_image_homogeneity([image, master_calibration_image], self.master_selection_criteria)
+            excluded_attributes = None
+            if image.confmode == "lco2_500kHz_binned_window":
+                excluded_attributes = ['nx','ny']
+            image_utils.check_image_homogeneity([image, master_calibration_image], self.master_selection_criteria,
+                                                ignore_attributes = excluded_attributes)
         except image_utils.InhomogeneousSetException:
             logger.error(logs.format_exception(), image=image)
             return None

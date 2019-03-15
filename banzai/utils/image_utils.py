@@ -55,10 +55,15 @@ def get_calibration_image_path_list(pipeline_context, instrument, frame_type, mi
                                                  use_masters=use_masters, db_address=pipeline_context.db_address)
 
 
-def check_image_homogeneity(images, group_by_attributes=None):
+def check_image_homogeneity(images, group_by_attributes=None, ignore_attributes = []):
+
     attribute_list = ['nx', 'ny', 'site', 'camera']
     if group_by_attributes is not None:
         attribute_list += group_by_attributes
+    if ignore_attributes is not None:
+        for item in ignore_attributes:
+            if item in attribute_list:
+                attribute_list.remove (item)
     for attribute in attribute_list:
         if len(set([getattr(image, attribute) for image in images])) > 1:
             raise InhomogeneousSetException('Images have different {0}s'.format(attribute))
