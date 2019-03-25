@@ -31,7 +31,8 @@ class FlatMaker(CalibrationStacker):
 
     @property
     def calibration_type(self):
-        return 'SKYFLAT'
+        # TODO: Do not hardcode flat type?
+        return 'DOMEFLAT'
 
     def make_master_calibration_frame(self, images):
         master_image = super(FlatMaker, self).make_master_calibration_frame(images)
@@ -47,25 +48,26 @@ class FlatDivider(ApplyCalibration):
 
     @property
     def calibration_type(self):
-        return 'SKYFLAT'
+        return 'DOMEFLAT'
 
     def apply_master_calibration(self, image, master_calibration_image):
 
         master_flat_filename = master_calibration_image.filename
         master_flat_data = master_calibration_image.data
-
-        if (image.confmode == "lco2_500kHz_binned_window"):
-
-            master_flat_data = master_flat_data[1023:3071,1023:3071]
+        master_flat_bpm = master_calibration_image.bpm
+        if (image.data.shape != master_flat_data.shape)  & (image.confmode == "lco2_500kHz_binned_window"):
+            # Ugly hack to force a resampled cutout from full frame readout into framed / binned readout
+            master_flat_data = master_flat_data[1024:3072,1024:3072]
             rows,cols = master_flat_data.shape
-            logger.info ("INput size: {} {}".format (rows,cols))
-            master_flat_data = master_flat_data.reshape(rows//2,2,cols//2,2).sum(axis=(1,3))/4.
+            logger.info ("Windowing / resampling full frame flat field fro readout mode, input size: {} {}".format (rows,cols))
+            master_flat_data = master_flat_data.reshape(rows//2, 2, cols//2, 2).sum(axis=(1,3))/4.
+            master_flat_bpm = master_calibration_image.bpm[1023:3071,1023:3071].reshape(rows//2,2,cols//2,2).sum(axis=(1,3))
             logger.info ("Resampled flat field data to shape {}".format(master_flat_data.shape))
 
         logging_tags = {'master_flat': os.path.basename(master_calibration_image.filename)}
         logger.info('Flattening image', image=image, extra_tags=logging_tags)
         image.data /= master_flat_data
-        image.bpm |= master_calibration_image.bpm[1023:3071,1023:3071].reshape(rows//2,2,cols//2,2).sum(axis=(1,3))
+        image.bpm |= master_flat_bpm
         master_flat_filename = os.path.basename(master_flat_filename)
         image.header['L1IDFLAT'] = (master_flat_filename, 'ID of flat frame')
         image.header['L1STATFL'] = (1, 'Status flag for flat field correction')
