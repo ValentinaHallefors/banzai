@@ -409,6 +409,12 @@ def save_calibration_info(output_file, image, db_address=_DEFAULT_DB):
 
 
 def get_processed_image(path, db_address=_DEFAULT_DB):
+    """
+    :param path: path to image
+    :param db_address: database address
+    :return: ProcessedImage
+    A database record. If a record does not exist for the image, we add a record to the db.
+    """
     filename = os.path.basename(path)
     with get_session(db_address=db_address) as db_session:
         processed_image = add_or_update_record(db_session, ProcessedImage, {'filename': filename},

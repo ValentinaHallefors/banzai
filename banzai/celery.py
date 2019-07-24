@@ -7,6 +7,7 @@ from celery import Celery
 
 from banzai import settings, dbs, calibrations, logs
 from banzai.utils import date_utils, realtime_utils, lake_utils
+from banzai.utils.image_utils import need_to_process_image
 from banzai.context import Context
 from banzai.utils.stage_utils import run
 from celery.signals import setup_logging
@@ -106,10 +107,8 @@ def process_image(path, runtime_context_dict):
     logger.info('Running process image.')
     runtime_context = Context(runtime_context_dict)
     try:
-        if realtime_utils.need_to_process_image(path,
-                                                ignore_schedulability=runtime_context.ignore_schedulability,
-                                                db_address=runtime_context.db_address,
-                                                max_tries=runtime_context.max_tries):
+        if need_to_process_image(path, ignore_schedulability=runtime_context.ignore_schedulability,
+                                 db_address=runtime_context.db_address, max_tries=runtime_context.max_tries):
             logger.info('Reducing frame', extra_tags={'filename': os.path.basename(path)})
 
             # Increment the number of tries for this file

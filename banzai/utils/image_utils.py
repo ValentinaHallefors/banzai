@@ -7,6 +7,7 @@ from banzai import logs
 from banzai import dbs
 from banzai.munge import munge
 from banzai.utils.fits_utils import get_primary_header
+from banzai.utils.realtime_utils import file_is_processed, file_changed_on_disc, reset_tries
 from banzai.utils.instrument_utils import instrument_passes_criteria
 from banzai.utils import import_utils
 from banzai.exceptions import InhomogeneousSetException
@@ -35,7 +36,8 @@ def select_images(image_list, image_type, db_address, ignore_schedulability):
     for filename in image_list:
         try:
             header = get_primary_header(filename)
-            should_process = image_can_be_processed(header, db_address)
+            should_process = need_to_process_image(filename, db_address=db_address,
+                                                   ignore_schedulability=ignore_schedulability)
             should_process &= (image_type is None or get_obstype(header) == image_type)
             if not ignore_schedulability:
                 instrument = dbs.get_instrument(header, db_address=db_address)
@@ -76,26 +78,70 @@ def check_image_homogeneity(images, group_by_attributes=None):
             raise InhomogeneousSetException('Images have different {0}s'.format(attribute))
 
 
-# TODO: Ensure NRES images return False
-def image_can_be_processed(header, db_address):
+def need_to_process_image(path, db_address=dbs._DEFAULT_DB, ignore_schedulability=False, max_tries=5):
+    """
+    Figure out if we need to try to make a process a given file.
+
+    Parameters
+    ----------
+    path: str
+          Full path to the image possibly needing to be processed
+    ignore_schedulability: bool
+             Process non-schedulable instruments
+    db_address: str
+                SQLAlchemy style URL to the database with the status of previous reductions
+    max_tries: int
+               Maximum number of retries to reduce an image
+
+    Returns
+    -------
+    need_to_process: bool
+                  True if we should try to process the image
+
+    Notes
+    -----
+    If the file has changed on disk, we reset the success flags and the number of tries to zero.
+    We only attempt to make images if the instrument is in the database and passes the given criteria.
+    """
+    process = True
+    logger.info("Checking if file needs to be processed", extra_tags={"filename": path})
+
+    if not (path.endswith('.fits') or path.endswith('.fits.fz')):
+        logger.debug("Filename does not have a .fits extension. Will not process.", extra_tags={"filename": path})
+        process = False
+    header = get_primary_header(path)
+
     if header is None:
-        logger.warning('Header being checked to process image is None')
-        return False
-    # Short circuit if the instrument is a guider even if they don't exist in configdb
+        logger.debug('Header being checked to process image is None. Will not process.')
+        process = False
     if not get_obstype(header) in settings.LAST_STAGE:
-        logger.warning('Image has an obstype that is not supported by banzai.')
-        return False
+        logger.debug('Image has an obstype that is not supported by banzai. Will not process.')
+        process = False
+    if not get_reduction_level(header) != '00':
+        logger.debug('Image has nonzero reduction level. Will not process.')
+        process = False
+
     try:
         instrument = dbs.get_instrument(header, db_address=db_address)
+        if not instrument_passes_criteria(instrument, settings.FRAME_SELECTION_CRITERIA):
+            logger.debug('Instrument does not pass reduction criteria. Will not process.')
+            process = False
+        if not ignore_schedulability and not instrument.schedulable:
+            logger.info('Instrument is not schedulable. Will not process.',
+                        extra_tags={"filename": path})
+            process = False
     except ValueError:
-        return False
-    passes = instrument_passes_criteria(instrument, settings.FRAME_SELECTION_CRITERIA)
-    if not passes:
-        logger.debug('Image does not pass reduction criteria')
-    passes &= get_reduction_level(header) == '00'
-    if get_reduction_level(header) != '00':
-        logger.debug('Image has nonzero reduction level')
-    return passes
+        logger.debug('ValueError while loading Instrument from database. Will not process.')
+        process = False
+
+    if file_changed_on_disc(path, db_address):
+        logger.debug('File has changed on disc, ignoring previous attemps at reduction')
+        reset_tries(path, db_address)
+    elif file_is_processed(path, db_address, max_tries=max_tries):
+        logger.debug('File is already processed. Will not process.')
+        process = False
+
+    return process
 
 
 def read_image(filename, runtime_context):

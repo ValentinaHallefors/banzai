@@ -18,7 +18,7 @@ from kombu.mixins import ConsumerMixin
 from banzai import dbs, logs, calibrations
 from banzai.context import Context
 from banzai.utils.stage_utils import run
-from banzai.utils import image_utils, date_utils, fits_utils
+from banzai.utils import image_utils, date_utils
 from banzai import settings
 from banzai.celery import process_image, submit_stacking_tasks_to_queue, schedule_calibration_stacking, app
 from celery.schedules import crontab
@@ -128,10 +128,8 @@ def process_single_frame(runtime_context, raw_path, filename, log_message=''):
         logger.info(log_message, extra_tags={'raw_path': raw_path, 'filename': filename})
     full_path = os.path.join(raw_path, filename)
     # Short circuit
-    if not image_utils.image_can_be_processed(fits_utils.get_primary_header(full_path), runtime_context.db_address):
-        logger.error('Image cannot be processed. Check to make sure the instrument '
-                     'is in the database and that the OBSTYPE is recognized by BANZAI',
-                     extra_tags={'raw_path': raw_path, 'filename': filename})
+    if not image_utils.need_to_process_image(full_path, runtime_context.db_address):
+        logger.error('Image cannot be processed.', extra_tags={'raw_path': raw_path, 'filename': filename})
         return
     try:
         run(full_path, runtime_context)
