@@ -80,7 +80,7 @@ def check_image_homogeneity(images, group_by_attributes=None):
 
 def need_to_process_image(path, db_address=dbs._DEFAULT_DB, ignore_schedulability=False, max_tries=5):
     """
-    Figure out if we need to try to make a process a given file.
+    Decides whether we need to process the image located at path.
 
     Parameters
     ----------
@@ -107,38 +107,38 @@ def need_to_process_image(path, db_address=dbs._DEFAULT_DB, ignore_schedulabilit
     logger.info("Checking if file needs to be processed", extra_tags={"filename": path})
 
     if not (path.endswith('.fits') or path.endswith('.fits.fz')):
-        logger.debug("Filename does not have a .fits extension. Will not process.", extra_tags={"filename": path})
+        logger.info("Filename does not have a .fits extension. Will not process.", extra_tags={"filename": path})
         process = False
     header = get_primary_header(path)
 
     if header is None:
-        logger.debug('Header being checked to process image is None. Will not process.')
+        logger.info('Header being checked to process image is None. Will not process.')
         process = False
     if not get_obstype(header) in settings.LAST_STAGE:
-        logger.debug('Image has an obstype that is not supported by banzai. Will not process.')
+        logger.info('Image has an obstype that is not supported by banzai. Will not process.')
         process = False
     if not get_reduction_level(header) != '00':
-        logger.debug('Image has nonzero reduction level. Will not process.')
+        logger.info('Image has nonzero reduction level. Will not process.')
         process = False
 
     try:
         instrument = dbs.get_instrument(header, db_address=db_address)
         if not instrument_passes_criteria(instrument, settings.FRAME_SELECTION_CRITERIA):
-            logger.debug('Instrument does not pass reduction criteria. Will not process.')
+            logger.info('Instrument does not pass reduction criteria. Will not process.')
             process = False
         if not ignore_schedulability and not instrument.schedulable:
             logger.info('Instrument is not schedulable. Will not process.',
                         extra_tags={"filename": path})
             process = False
     except ValueError:
-        logger.debug('ValueError while loading Instrument from database. Will not process.')
+        logger.info('ValueError while loading Instrument from database. Will not process.')
         process = False
 
     if file_changed_on_disc(path, db_address):
-        logger.debug('File has changed on disc, ignoring previous attemps at reduction')
+        logger.info('File has changed on disc, ignoring previous attempts at reduction')
         reset_tries(path, db_address)
     elif file_is_processed(path, db_address, max_tries=max_tries):
-        logger.debug('File is already processed. Will not process.')
+        logger.info('File is already processed. Will not process.')
         process = False
 
     return process
