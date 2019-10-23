@@ -65,6 +65,7 @@ distribute-*.tar.gz
 .project
 .pydevproject
 .settings
+**/*.fits*
 
 # Mac OSX
 .DS_Store
